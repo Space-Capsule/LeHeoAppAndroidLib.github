@@ -20,5 +20,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "UnityBluetoothLib"
-include ':app'
 include ':btlibrary'
