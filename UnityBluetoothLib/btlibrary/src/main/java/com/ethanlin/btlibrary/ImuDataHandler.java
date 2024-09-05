@@ -88,7 +88,7 @@ public class ImuDataHandler {
             mQuaternionMapping.put(mDownId, new QuaternionDataHelper(mDownFloatX, mDownFloatY, mDownFloatZ, mDownFloatW));
 
             mFinalDataString = String.format("%d#%.03f#%.03f#%.03f#%.03f#%d#%.03f#%.03f#%.03f#%.03f", mUpperId, mUpperFloatX, mUpperFloatY, mUpperFloatZ, mUpperFloatW, mDownId, mDownFloatX, mDownFloatY, mDownFloatZ, mDownFloatW);
-            UnityPlayer.UnitySendMessage(GlobalConfig.UNITY_GAME_OBJECT_NAME, "receiveDataFromNative", mFinalDataString);
+            // UnityPlayer.UnitySendMessage(GlobalConfig.UNITY_GAME_OBJECT_NAME, "receiveDataFromNative", mFinalDataString);
         }
     }
 }

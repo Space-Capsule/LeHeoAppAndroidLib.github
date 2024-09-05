@@ -18,13 +18,14 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Environment;
 import android.text.TextUtils;
+import android.util.Base64;
+import android.widget.Toast;
 
 import com.ethanlin.config.GlobalConfig;
 import com.ethanlin.utils.Utils;
 import com.unity3d.player.UnityPlayer;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -51,7 +52,7 @@ public class UnityBluetoothDataLib {
     private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
 
-    private ImuDataHandler mImuDataHandler = null;
+    // private ImuDataHandler mImuDataHandler = null;
 
     /**
      * 收到的RawData
@@ -77,7 +78,7 @@ public class UnityBluetoothDataLib {
         mBluetoothManager = mContext.getSystemService(BluetoothManager.class);
         mBluetoothAdapter = mBluetoothManager.getAdapter();
 
-        mImuDataHandler = new ImuDataHandler();
+        // mImuDataHandler = new ImuDataHandler();
 
         mIsScanning = false;
 
@@ -88,6 +89,11 @@ public class UnityBluetoothDataLib {
             enableBluetoothEnable();
         }
     }
+
+    /**
+     * Set Unity GameObject Name
+     */
+    public void setUnityGameObjectName(String aUnityGameObjectName) { GlobalConfig.UnityGameObject = aUnityGameObjectName; }
 
     /**
      * 檢查是否有External storage permission
@@ -155,8 +161,10 @@ public class UnityBluetoothDataLib {
         mIsScanning = false;
         mBluetoothAdapter.getBluetoothLeScanner().stopScan(mLeScanCallback);
         android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("stop scan, is scanning: %b", mIsScanning));
+        UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "receiveMessageFromNative", "stopScan");
+
         if (deviceList.isEmpty()) {
-            UnityPlayer.UnitySendMessage(GlobalConfig.UNITY_GAME_OBJECT_NAME, "whenStopScan", "0");
+            UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "whenStopScan", "0");
         }
     }
 
@@ -177,7 +185,7 @@ public class UnityBluetoothDataLib {
             if (btDevice.getName() == null) return;
 
             if (!TextUtils.isEmpty(btDevice.getName())) {
-                if (btDevice.getName().contains(GlobalConfig.SC_BLE_NAME) || btDevice.getName().contains(GlobalConfig.SC_BLE_NAME1) || btDevice.getName().contains(GlobalConfig.SC_BLE_NAME2)) {
+                if (btDevice.getName().contains(GlobalConfig.SC_BLE_NAME) || btDevice.getName().contains(GlobalConfig.SC_BLE_NAME_HC) || btDevice.getName().contains(GlobalConfig.SC_BLE_NAME2) || btDevice.getName().contains(GlobalConfig.SC_BLE_NAME_LTC)) {
 
                     while (!deviceMap.containsKey(btDevice.getAddress()) && mIsScanning) {
                         deviceList.add(btDevice);
@@ -188,12 +196,9 @@ public class UnityBluetoothDataLib {
                     if (!deviceList.isEmpty()) {
                         for (int i = 0; i < deviceList.size(); ++i) {
                             @SuppressLint("DefaultLocale") String deviceInfo = String.format("%d#%s#%s", deviceList.size(), deviceList.get(i).getName(), deviceList.get(i).getAddress());
-                            UnityPlayer.UnitySendMessage(GlobalConfig.UNITY_GAME_OBJECT_NAME, "detectedDevices", deviceInfo);
+                            UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "detectedDevices", deviceInfo);
                         }
                     }
-
-                    // 跟Unity報告有掃瞄到裝置
-                    // Utils.unitySendMessage("onScanResult");
                     // 掃瞄時間由Unity直接實作
                     // stopScan();
                 }
@@ -215,7 +220,7 @@ public class UnityBluetoothDataLib {
 
             android.util.Log.e(GlobalConfig.DEBUG_TAG, String.format("onScanFailed Error Code: %d", errorCode));
             // 跟Unity報告找不到裝置
-            UnityPlayer.UnitySendMessage(GlobalConfig.UNITY_GAME_OBJECT_NAME, "detectedDevices", "0#null#null");
+            UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "detectedDevices", "0#null#null");
         }
     };
 
@@ -223,7 +228,7 @@ public class UnityBluetoothDataLib {
      * 連接藍牙裝置 with device address
      */
     public void connectBluetoothDevice(String aDeviceAddress) {
-        android.util.Log.d(GlobalConfig.DEBUG_TAG, "connectBluetoothDevice with device address");
+        android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("connectBluetoothDevice with %s", aDeviceAddress));
         BluetoothGatt gatt = null;
         if (UnityPlayer.currentActivity.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
             requestBluetoothPermission();
@@ -236,9 +241,25 @@ public class UnityBluetoothDataLib {
             // android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("connectBluetoothDevice gatt is %s", gatt));
             mDeviceGattMap.clear();
             mDeviceGattMap.put(aDeviceAddress, gatt);
-            // Utils.unitySendMessage("devicesConnected");
         } else {
             android.util.Log.e(GlobalConfig.DEBUG_TAG, "oops, gatt is null.");
+        }
+    }
+    /**
+     * 斷開所有藍牙裝置
+     */
+    public void disconnectAllBluetoothDevice() {
+        if (mBluetoothAdapter != null && mDeviceGattMap != null && mDeviceGattMap.size() > 0) {
+            for (String key : mDeviceGattMap.keySet()) {
+                BluetoothGatt gatt = mDeviceGattMap.get(key);
+                if (gatt != null) {
+                    if (UnityPlayer.currentActivity.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                        requestBluetoothPermission();
+                        return;
+                    }
+                    gatt.disconnect();
+                }
+            }
         }
     }
     /**
@@ -253,7 +274,7 @@ public class UnityBluetoothDataLib {
 
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 android.util.Log.d(GlobalConfig.DEBUG_TAG, "onConnectionStateChange STATE: CONNECTED 已連接");
-                UnityPlayer.UnitySendMessage(GlobalConfig.UNITY_GAME_OBJECT_NAME, "receiveMessageFromNative", "devicesConnected");
+                UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "receiveMessageFromNative", "devicesConnected");
                 if (UnityPlayer.currentActivity.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
                     requestBluetoothPermission();
                     return;
@@ -265,7 +286,7 @@ public class UnityBluetoothDataLib {
                 }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 android.util.Log.d(GlobalConfig.DEBUG_TAG, "onConnectionStateChange STATE: DISCONNECTED 已斷開連線");
-                UnityPlayer.UnitySendMessage(GlobalConfig.UNITY_GAME_OBJECT_NAME, "receiveMessageFromNative", "devicesDisconnected");
+                UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "receiveMessageFromNative", "devicesDisconnected");
                 if (gatt != null) {
                     // String deviceAddress = gatt.getDevice().getAddress();
                     gatt.close();
@@ -322,12 +343,18 @@ public class UnityBluetoothDataLib {
                 mReceivedDta = characteristic.getValue();
 
                 if (mReceivedDta != null && mReceivedDta.length == 36) {
+                    // 直接將byte array 轉成String 傳給Unity
+                    String dataString = Base64.encodeToString(mReceivedDta, Base64.DEFAULT);
+                    UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "receiveDataFromNative", dataString);
+                }
+
+                /*if (mReceivedDta != null && mReceivedDta.length == 36) {
                     if (mImuDataHandler != null) {
                         mImuDataHandler.setByteArrayData(mReceivedDta);
                     } else {
                         android.util.Log.e(GlobalConfig.DEBUG_TAG, "ImuDataHandler is null...");
                     }
-                }
+                }*/
             }
         }
 
@@ -361,7 +388,7 @@ public class UnityBluetoothDataLib {
     };
 
     private void onServiceDiscoveredFinished() {
-        mImuDataHandler.initQuaternionMapping();
+        // mImuDataHandler.initQuaternionMapping();
 
         // 開始訂閱
         // android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("onServiceDiscoveredFinished 掃瞄完畢, 開始訂閱=> %s", mCurrentConnectedDeviceAddress));
@@ -431,5 +458,12 @@ public class UnityBluetoothDataLib {
         } else {
             android.util.Log.e(GlobalConfig.DEBUG_TAG, "setCharacteristicNotification gatt is null");
         }
+    }
+
+    /**
+     * 儲存螢幕擷圖的Toast Messages
+     */
+    public void toastToTellImageSaved() {
+        Toast.makeText(mContext, mContext.getString(R.string.saved_to_pictures), Toast.LENGTH_SHORT).show();
     }
 }

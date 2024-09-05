@@ -27,7 +27,7 @@ android {
 
 dependencies {
 
-    //noinspection UseTomlInstead
+    //noinspection GradleDependency,UseTomlInstead
     implementation 'androidx.appcompat:appcompat:1.6.1'
     //noinspection UseTomlInstead,GradleDependency
     implementation 'com.google.android.material:material:1.9.0'
@@ -36,8 +36,8 @@ dependencies {
 
     //noinspection UseTomlInstead
     testImplementation 'junit:junit:4.13.2'
-    //noinspection UseTomlInstead
+    //noinspection GradleDependency,UseTomlInstead
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    //noinspection UseTomlInstead
+    //noinspection GradleDependency,UseTomlInstead
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }

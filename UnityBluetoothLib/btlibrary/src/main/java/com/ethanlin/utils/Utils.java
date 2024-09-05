@@ -15,12 +15,13 @@ import java.util.Locale;
 import java.util.UUID;
 
 public class Utils {
-    public static void unitySendDataString(String aDataString) {
+
+    /*public static void unitySendDataString(String aDataString) {
         UnityPlayer.UnitySendMessage(GlobalConfig.UNITY_GAME_OBJECT_NAME, "receiveDataFromAndroidNative", aDataString);
     }
     public static void unitySendMessage(String aMessage) {
         UnityPlayer.UnitySendMessage(GlobalConfig.UNITY_GAME_OBJECT_NAME, "receiveMessageFromAndroidNative", aMessage);
-    }
+    }*/
 
     public static String getCurrentDateTime() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
@@ -76,7 +77,6 @@ public class Utils {
      * 取得下半身ID return Int
      */
     public static int getDownBodyId(byte[] aBytes) {
-        // byteArrayToHexString(aBytes).substring(37, 38)
         if (byteArrayToHexString(aBytes).substring(36, 37).equals("E"))
         {
             return byteArrayToHexString(aBytes).charAt(37) == 'A' ? 10 : Integer.parseInt(byteArrayToHexString(aBytes).substring(37, 38));

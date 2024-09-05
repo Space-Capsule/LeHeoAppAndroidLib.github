@@ -1,24 +1,22 @@
 package com.ethanlin.config;
 
 import android.Manifest;
-import android.os.Build;
 import android.os.Environment;
-
-import androidx.annotation.RequiresApi;
 
 import java.io.File;
 import java.util.UUID;
 
 public class GlobalConfig {
     /**
-     * Debug 的 tag
+     * Debug 的 tag, EthanLinLeHuoAppTag, EthanLinCheckSensorTag EthanLinGameCenterTag
      */
-    public final static String DEBUG_TAG = "EthanLinLeHuoAppTag";
+    public final static String DEBUG_TAG = "EthanLinDebugTag";
 
     /**
      * Unity GameObject name
      */
-    public final static String UNITY_GAME_OBJECT_NAME = "Android_Native_Plugins";
+    // public final static String UNITY_GAME_OBJECT_NAME = "NativeBridge";
+    public static String UnityGameObject;
 
     /**
      * 藍牙主機的名稱
@@ -28,11 +26,15 @@ public class GlobalConfig {
     /**
      * 藍牙主機的名稱
      */
-    public final static String SC_BLE_NAME1 = "HC-";
+    public final static String SC_BLE_NAME_HC = "HC-";
     /**
      * 藍牙主機的名稱
      */
     public final static String SC_BLE_NAME2 = "SC-S0000";
+    /**
+     * 藍牙主機的名稱 for 長照的 LTC
+     */
+    public final static String SC_BLE_NAME_LTC = "SC-LTC";
 
     public final static String SUBSCRIBED_SERVICE = "FFE0";
     public final static String SUBSCRIBED_CHARACTERISTIC = "FFE1";
