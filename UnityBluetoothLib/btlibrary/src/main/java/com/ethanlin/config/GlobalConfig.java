@@ -39,6 +39,9 @@ public class GlobalConfig {
     public final static String SUBSCRIBED_SERVICE = "FFE0";
     public final static String SUBSCRIBED_CHARACTERISTIC = "FFE1";
 
+    public final static int DATA_SIZE_20 = 20;
+    public final static int DATA_SIZE_36 = 36;
+
     public final static int REQUEST_ENABLE_BT = 200;
     public final static int PERMISSIONS_REQUEST_BLUETOOTH = 201;
     /**權限宣告REQUEST_CODE */

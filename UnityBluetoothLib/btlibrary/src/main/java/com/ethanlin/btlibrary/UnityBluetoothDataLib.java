@@ -190,7 +190,7 @@ public class UnityBluetoothDataLib {
                     while (!deviceMap.containsKey(btDevice.getAddress()) && mIsScanning) {
                         deviceList.add(btDevice);
                         deviceMap.put(btDevice.getAddress(), btDevice);
-                        // android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("onScanResult: %s, %s", btDevice.getName(), btDevice.getAddress()));
+                        android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("onScanResult: %s, %s", btDevice.getName(), btDevice.getAddress()));
                     }
 
                     if (!deviceList.isEmpty()) {
@@ -305,6 +305,7 @@ public class UnityBluetoothDataLib {
 
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 if (gatt != null) {
+                    // CONNECTION_PRIORITY_HIGH, CONNECTION_PRIORITY_BALANCED
                     gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
                     List<BluetoothGattService> services = gatt.getServices();
                     if (services != null) {
@@ -342,10 +343,11 @@ public class UnityBluetoothDataLib {
             if (characteristic != null) {
                 mReceivedDta = characteristic.getValue();
 
-                if (mReceivedDta != null && mReceivedDta.length == 36) {
+                if (mReceivedDta != null && (mReceivedDta.length == GlobalConfig.DATA_SIZE_20 || mReceivedDta.length == GlobalConfig.DATA_SIZE_36)) {
                     // 直接將byte array 轉成String 傳給Unity
                     String dataString = Base64.encodeToString(mReceivedDta, Base64.DEFAULT);
                     UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "receiveDataFromNative", dataString);
+                    android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("onCharacteristicChanged: %s", Utils.byteArrayToHexString(mReceivedDta)));
                 }
 
                 /*if (mReceivedDta != null && mReceivedDta.length == 36) {
