@@ -16,7 +16,7 @@ public class GlobalConfig {
      * Unity GameObject name
      */
     // public final static String UNITY_GAME_OBJECT_NAME = "NativeBridge";
-    public static String UnityGameObject;
+    public static String UnityGameObject = "NativeBridge";
 
     /**
      * 藍牙主機的名稱

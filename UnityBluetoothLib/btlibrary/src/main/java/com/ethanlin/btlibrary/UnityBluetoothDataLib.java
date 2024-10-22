@@ -52,8 +52,6 @@ public class UnityBluetoothDataLib {
     private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
 
-    // private ImuDataHandler mImuDataHandler = null;
-
     /**
      * 收到的RawData
      */
@@ -72,21 +70,38 @@ public class UnityBluetoothDataLib {
      */
     private String mCurrentConnectedDeviceAddress;
 
-    public void initNativeLibAndBluetoothManager(Context aContext) {
-        mContext = aContext;
+    public void initNativeLibAndBluetoothManager(/*Context aContext*/) {
+        // mContext = aContext;
+        mContext = (Context) UnityPlayer.currentContext;
 
-        mBluetoothManager = mContext.getSystemService(BluetoothManager.class);
-        mBluetoothAdapter = mBluetoothManager.getAdapter();
-
-        // mImuDataHandler = new ImuDataHandler();
+        checkBt();
 
         mIsScanning = false;
+    }
 
-        if (isBluetoothAdapterEnable()) {
-            android.util.Log.d(GlobalConfig.DEBUG_TAG, "棒棒，藍牙已開啟了！");
-        } else {
+    private void checkBt() {
+        if (mContext == null) {
+            android.util.Log.e(GlobalConfig.DEBUG_TAG, "oops, mContext is null~~~~");
+            return;
+        }
+
+        mBluetoothManager = mContext.getSystemService(BluetoothManager.class);
+        if (mBluetoothManager == null) {
+            android.util.Log.e(GlobalConfig.DEBUG_TAG, "oops, mBluetoothManager is null~~~~");
+            return;
+        }
+
+        mBluetoothAdapter = mBluetoothManager.getAdapter();
+        if (mBluetoothAdapter == null) {
+            android.util.Log.e(GlobalConfig.DEBUG_TAG, "oops, mBluetoothAdapter is null~~~~");
+        }
+
+        if (!mBluetoothAdapter.isEnabled()) {
             android.util.Log.d(GlobalConfig.DEBUG_TAG, "藍牙沒開，趕快去開啦！");
-            enableBluetoothEnable();
+            // 打開系統藍牙設定頁
+            UnityPlayer.currentActivity.startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), GlobalConfig.PERMISSIONS_REQUEST_BLUETOOTH);
+        } else {
+            android.util.Log.d(GlobalConfig.DEBUG_TAG, "棒棒，藍牙已開啟了！");
         }
     }
 
@@ -106,24 +121,16 @@ public class UnityBluetoothDataLib {
     public void requestManageExternalStoragePermission() { PermissionHelper.requestManageExternalStoragePermission(); }
 
     /**
-     * is bluetooth adapter enable
-     * @return true: enable, false: disable
-     */
-    public boolean isBluetoothAdapterEnable() { return mBluetoothAdapter.isEnabled(); }
-
-    /**
      * enable bluetooth adapter
      */
     public void enableBluetoothEnable() {
-        if (!isBluetoothAdapterEnable()) {
-            if (UnityPlayer.currentActivity.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                requestBluetoothPermission();
-                return;
-            }
-
-            // 打開系統藍牙設定頁
-            UnityPlayer.currentActivity.startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), GlobalConfig.PERMISSIONS_REQUEST_BLUETOOTH);
+        if (UnityPlayer.currentActivity.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            requestBluetoothPermission();
+            return;
         }
+
+        // 打開系統藍牙設定頁
+        UnityPlayer.currentActivity.startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), GlobalConfig.PERMISSIONS_REQUEST_BLUETOOTH);
     }
     /**
      * 要求藍牙權限
@@ -137,15 +144,15 @@ public class UnityBluetoothDataLib {
         deviceList.clear();
         deviceMap.clear();
 
-        if (isBluetoothAdapterEnable()) {
-            if (UnityPlayer.currentActivity.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                requestBluetoothPermission();
-                return;
-            }
+        if (UnityPlayer.currentActivity.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+            requestBluetoothPermission();
+            return;
+        }
+
+        if (mBluetoothAdapter.isEnabled()) {
             mBluetoothAdapter.getBluetoothLeScanner().startScan(mLeScanCallback);
             mIsScanning = true;
             android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("is scanning: %b", true));
-            // mBluetoothAdapter.getBluetoothLeScanner().startScan(createScanFilters(), createScanSettings(), mLeScanCallback);
         } else {
             enableBluetoothEnable();
         }
@@ -158,13 +165,16 @@ public class UnityBluetoothDataLib {
             requestBluetoothPermission();
             return;
         }
-        mIsScanning = false;
-        mBluetoothAdapter.getBluetoothLeScanner().stopScan(mLeScanCallback);
-        android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("stop scan, is scanning: %b", mIsScanning));
-        UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "receiveMessageFromNative", "stopScan");
 
-        if (deviceList.isEmpty()) {
-            UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "whenStopScan", "0");
+        if (mBluetoothAdapter.isEnabled()) {
+            mIsScanning = false;
+            mBluetoothAdapter.getBluetoothLeScanner().stopScan(mLeScanCallback);
+            android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("stop scan, is scanning: %b", mIsScanning));
+            UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "receiveMessageFromNative", "stopScan");
+
+            if (deviceList.isEmpty()) {
+                UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "whenStopScan", "0");
+            }
         }
     }
 
@@ -349,14 +359,6 @@ public class UnityBluetoothDataLib {
                     UnityPlayer.UnitySendMessage(GlobalConfig.UnityGameObject, "receiveDataFromNative", dataString);
                     android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("onCharacteristicChanged: %s", Utils.byteArrayToHexString(mReceivedDta)));
                 }
-
-                /*if (mReceivedDta != null && mReceivedDta.length == 36) {
-                    if (mImuDataHandler != null) {
-                        mImuDataHandler.setByteArrayData(mReceivedDta);
-                    } else {
-                        android.util.Log.e(GlobalConfig.DEBUG_TAG, "ImuDataHandler is null...");
-                    }
-                }*/
             }
         }
 
@@ -390,11 +392,75 @@ public class UnityBluetoothDataLib {
     };
 
     private void onServiceDiscoveredFinished() {
-        // mImuDataHandler.initQuaternionMapping();
-
         // 開始訂閱
         // android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("onServiceDiscoveredFinished 掃瞄完畢, 開始訂閱=> %s", mCurrentConnectedDeviceAddress));
-        setCharacteristicNotification(mCurrentConnectedDeviceAddress, GlobalConfig.SUBSCRIBED_SERVICE, GlobalConfig.SUBSCRIBED_CHARACTERISTIC, true);
+        setCharacteristicNotification();
+        // setCharacteristicNotification(mCurrentConnectedDeviceAddress, GlobalConfig.SUBSCRIBED_SERVICE, GlobalConfig.SUBSCRIBED_CHARACTERISTIC, true);
+    }
+    private void setCharacteristicNotification() {
+        BluetoothGatt gatt = mDeviceGattMap.get(mCurrentConnectedDeviceAddress);
+        if (gatt != null) {
+            UUID serviceUUID = Utils.getUUID(GlobalConfig.SUBSCRIBED_SERVICE);
+            if (serviceUUID != null) {
+                BluetoothGattService service = gatt.getService(serviceUUID);
+                if (service != null) {
+                    // android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("service uuid is %s", service.getUuid()));
+                    UUID characteristicUUID = Utils.getUUID(GlobalConfig.SUBSCRIBED_CHARACTERISTIC);
+                    // android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("characteristicUUID is %s", characteristicUUID));
+                    if (characteristicUUID != null) {
+                        BluetoothGattCharacteristic characteristic = service.getCharacteristic(characteristicUUID);
+                        if (UnityPlayer.currentActivity.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                            requestBluetoothPermission();
+                            return;
+                        }
+                        if (characteristic != null) {
+                            if (gatt.setCharacteristicNotification(characteristic, true)) {
+                                BluetoothGattDescriptor descriptor = characteristic.getDescriptor(GlobalConfig.CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID);
+                                if (descriptor != null) {
+                                    int characteristicProperties = characteristic.getProperties();
+                                    byte[] valueToSend = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
+                                    boolean enabled = true;
+                                    if (enabled) {
+                                        if ((characteristicProperties & 0x10) == 16) {
+                                            valueToSend = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
+                                        } else if ((characteristicProperties & 0x20) == 32) {
+                                            valueToSend = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
+                                        }
+                                    }
+
+                                    // android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("setCharacteristicNotification %s", Arrays.toString(valueToSend)));
+
+                                    if (valueToSend.length > 0) {
+                                        // android.util.Log.d(GlobalConfig.DEBUG_TAG, String.format("Notification Description: %d", valueToSend.length));
+                                        descriptor.setValue(valueToSend);
+                                        if (!gatt.writeDescriptor(descriptor)) {
+                                            android.util.Log.e(GlobalConfig.DEBUG_TAG, "Error~Failed to write characteristic descriptor");
+                                        } else {
+                                            android.util.Log.d(GlobalConfig.DEBUG_TAG, "Notification setup succeeded");
+                                        }
+                                    } else {
+                                        android.util.Log.e(GlobalConfig.DEBUG_TAG, "valueToSend is empty");
+                                    }
+
+                                } else {
+                                    android.util.Log.e(GlobalConfig.DEBUG_TAG, "descriptor is null");
+                                }
+                            }
+                        } else {
+                            android.util.Log.e(GlobalConfig.DEBUG_TAG, "characteristic is null");
+                        }
+                    } else {
+                        android.util.Log.e(GlobalConfig.DEBUG_TAG, "characteristicUUID is null");
+                    }
+                } else {
+                    android.util.Log.e(GlobalConfig.DEBUG_TAG, "service is null");
+                }
+            } else {
+                android.util.Log.e(GlobalConfig.DEBUG_TAG, "serviceUUID is null");
+            }
+        } else {
+            android.util.Log.e(GlobalConfig.DEBUG_TAG, "setCharacteristicNotification gatt is null");
+        }
     }
     private void setCharacteristicNotification(String aDeviceAddress, String aService, String aCharacteristic, boolean aEnable) {
         BluetoothGatt gatt = mDeviceGattMap.get(aDeviceAddress);
